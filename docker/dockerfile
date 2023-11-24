@@ -1,0 +1,64 @@
+FROM ubuntu:22.04
+
+# Chisel 3 docker image for Chip Dev
+# ==========
+# Fangrui Liu / fangrui.liu@outlook.com / 2023
+
+USER root
+
+RUN apt-get update && apt-get upgrade -y
+RUN apt install ca-certificates -y
+
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse\n" > /etc/apt/sources.list
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse\n" >> /etc/apt/sources.list
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse\n" >> /etc/apt/sources.list
+RUN echo "deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse\n" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get install default-jdk sudo git make autoconf g++ flex bison curl wget gnupg -y && apt-get clean -y
+
+# install sbt
+# Reference: https://www.scala-sbt.org/download.html
+RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list
+RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | tee /etc/apt/sources.list.d/sbt_old.list
+RUN curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+RUN apt-get update && apt-get install sbt -y && apt-get clean -y
+
+# install firtool
+RUN wget -q -O - https://github.com/llvm/circt/releases/download/firtool-1.38.0/firrtl-bin-ubuntu-20.04.tar.gz | tar -zx
+RUN mv firtool-1.38.0/bin/firtool /usr/local/bin/
+
+WORKDIR /workspace/
+
+RUN git clone https://github.com/verilator/verilator
+
+WORKDIR /workspace/verilator/
+RUN git pull && git checkout v4.226
+RUN autoconf && ./configure
+RUN make -j8 && make install && make clean
+
+WORKDIR /workspace/
+RUN rm -rf /workspace/verilator
+
+# add user
+RUN groupadd -r chisel -g 1001 && useradd -u 1001 -r -g chisel -s /sbin/nologin -c "Docker image user" chisel && usermod -aG sudo chisel
+RUN echo "chisel:chisel" | chpasswd
+
+# accessibility
+RUN apt install net-tools -y
+RUN mkdir -p /home/chisel && chown -R chisel /workspace /home/chisel
+RUN apt clean -y
+
+USER chisel
+RUN git clone https://github.com/chipsalliance/chisel.git
+WORKDIR /workspace/chisel
+RUN git checkout v5.1.0
+RUN sbt compile 
+RUN sbt "unipublish / publishLocal"
+
+USER root
+WORKDIR /workspace/
+RUN rm -rf /workspace/chisel
+
+USER chisel
+ENV SHELL /bin/bash
+CMD ["bash"]
