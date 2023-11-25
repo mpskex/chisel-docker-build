@@ -1,19 +1,28 @@
-FROM ubuntu:22.04
+FROM --platform=$TARGETPLATFORM ubuntu:22.04 AS base
 
 # Chisel 3 docker image for Chip Dev
 # ==========
 # Fangrui Liu / fangrui.liu@outlook.com / 2023
 
+ARG TARGETARCH
 USER root
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt install ca-certificates -y
 
-RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse\n" > /etc/apt/sources.list
-RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse\n" >> /etc/apt/sources.list
-RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse\n" >> /etc/apt/sources.list
-RUN echo "deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse\n" >> /etc/apt/sources.list
+FROM base AS base-amd64
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse\n" > /etc/apt/sources.list; \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse\n" >> /etc/apt/sources.list; \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse\n" >> /etc/apt/sources.list; \
+    echo "deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse\n" >> /etc/apt/sources.list;
 
+FROM base AS base-arm64
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/ jammy main restricted universe multiverse" > /etc/apt/sources.list; \ 
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/ jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list; \ 
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/ jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list; \ 
+    echo "deb http://ports.ubuntu.com/ubuntu-ports/ jammy-security main restricted universe multiverse" >> /etc/apt/sources.list; 
+
+FROM base-${TARGETARCH}
 RUN apt-get update && apt-get install default-jdk sudo git make autoconf g++ flex bison curl wget gnupg -y && apt-get clean -y
 
 # install sbt
