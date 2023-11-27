@@ -9,6 +9,10 @@ This is a chisel workbench designed for someone who like docker containers and v
 make image
 # Create & Run the image as a container
 make container
+# Test chisel design
+make test
+# Build verilog design from chisel
+make build
 ```
 
 Then you can use [vscode dev container plugin](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) to connect this container. Happy coding (for chip)
